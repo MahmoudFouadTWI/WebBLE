@@ -200,8 +200,9 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
     var writeCharacteristicTM = WBTransactionManager<CharacteristicTransactionKey>()
 
     // MARK: - Constructor and equality
-    init(peripheral: CBPeripheral, advertisementData: [String: Any] = [:], RSSI: NSNumber = 0, manager: WBManager) {
+    init(peripheral: CBPeripheral, deviceId: UUID = UUID(), advertisementData: [String: Any] = [:], RSSI: NSNumber = 0, manager: WBManager) {
         self.peripheral = peripheral
+        self.deviceId = deviceId
         self.adData = BluetoothAdvertisingData(advertisementData:advertisementData,RSSI: RSSI)
         self.manager = manager
         super.init()
@@ -228,6 +229,7 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
         self.readCharacteristicTM.abandonAll()
     }
     func didConnect() {
+        self.sendConnectEvent()
         self.connectTransactions.forEach{$0.resolveAsSuccess()}
     }
     func didFailToConnect() {
@@ -440,7 +442,8 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
             "vendorID": 0,
             "productID": 0,
             "productVersion": 0,
-            "uuids": []
+            "uuids": [],
+            "peripheralId": self.internalUUID.uuidString
         ]
         
         do {
@@ -638,6 +641,13 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
         /* Don't lower case the deviceId string because we rely on the web page not to touch it. */
         let commandString = "window.receiveDeviceDisconnectEvent(\(self.deviceId.uuidString.jsonify()));\n"
         NSLog("Send disconnect event for \(self.deviceId.uuidString)")
+        Utilities.pushLocalNotification(notificationMessage: "\(self.name ?? self.deviceId.uuidString) disconnected", notificationTitle: "Disconnection")
+        self.evaluateJavaScript(commandString)
+    }
+    private func sendConnectEvent() {
+        let commandString =  "didConnect(\(self.jsonify()))"
+        NSLog("Send did connect event for \(self.deviceId.uuidString)")
+        Utilities.pushLocalNotification(notificationMessage: "\(self.name ?? self.deviceId.uuidString) connected", notificationTitle: "Connection")
         self.evaluateJavaScript(commandString)
     }
 

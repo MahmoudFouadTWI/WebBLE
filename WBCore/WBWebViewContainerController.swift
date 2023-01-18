@@ -175,7 +175,9 @@ class WBWebViewContainerController: UIViewController, WKNavigationDelegate, WKUI
     // MARK: - Private
     private func _configureNewManager() {
         self.wbManager?.clearState()
-        self.wbManager = WBManager(devicePicker: self)
+        if wbManager == nil {
+            self.wbManager = WBManager(devicePicker: self)
+        }
         self.webView.wbManager = self.wbManager
     }
 

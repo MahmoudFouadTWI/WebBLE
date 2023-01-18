@@ -71,6 +71,7 @@
       messageParms = messageParms || {};
       messageParms.data = messageParms.data || {};
       messageParms.data.deviceId = this.device.id;
+      messageParms.data.peripheralId = this.device.peripheralId;
       return await wb.native.sendMessage('device:' + type, messageParms);
     },
     toString: function () {

@@ -141,6 +141,7 @@ class WBWebView: WKWebView, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         self._enableBluetoothInView()
         self._navDelegates.forEach{$0.webView?(webView, didFinish: navigation)}
+      //  wbManager?.handleRestoredDevice(view: self)
     }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         self._navDelegates.forEach{$0.webView?(webView, didFail: navigation, withError: error)}

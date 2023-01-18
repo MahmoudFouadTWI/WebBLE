@@ -34,8 +34,9 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
     }
 
     // MARK: - Properties
+   // var restoredPeripheral: CBPeripheral!
     let debug = true
-    let centralManager = CBCentralManager(delegate: nil, queue: nil)
+    var centralManager = CBCentralManager(delegate: nil, queue: nil)
     var devicePicker: WBPicker
 
     /*! @abstract The devices selected by the user for use by this manager. Keyed by the UUID provided by the system. */
@@ -57,7 +58,7 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
     init(devicePicker: WBPicker) {
         self.devicePicker = devicePicker
         super.init()
-        self.centralManager.delegate = self
+    self.centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionRestoreIdentifierKey: "my-central"])
     }
     
     // MARK: - Public API
@@ -128,12 +129,18 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
                 return
         }
         device.didDisconnect(error: error)
-        self.devicesByInternalUUID[peripheral.identifier] = nil
-        self.devicesByExternalUUID[device.deviceId] = nil
+      //  self.devicesByInternalUUID[peripheral.identifier] = nil
+      //  self.devicesByExternalUUID[device.deviceId] = nil
     }
     
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         NSLog("FAILED TO CONNECT PERIPHERAL UNHANDLED \(error?.localizedDescription ?? "<no error>")")
+    }
+    
+    public func centralManager(_ central: CBCentralManager, willRestoreState dict: [String : Any]) {
+//        if let peripherals = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral], peripherals.count > 0, let peripheral = peripherals.first {
+//                restoredPeripheral = peripheral
+//        }
     }
 
     // MARK: - UIPickerViewDelegate
@@ -174,12 +181,25 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
             }
 
             let devUUID = view.externalDeviceUUID
-            guard let device = self.devicesByExternalUUID[devUUID]
-                else {
+            // get device from external Dictionary in case connect after scan.
+            var device = self.devicesByExternalUUID[devUUID]
+            if device == nil {
+                //get device in reconnection case.
+                if let uuidstr = transaction.messageData["peripheralId"] as? String,
+                   let uuid = UUID(uuidString: uuidstr),
+                   let peripheral = self.centralManager.retrievePeripherals(withIdentifiers: [uuid]).first {
+                    let wbDevice = WBDevice(peripheral: peripheral,deviceId: devUUID, manager: self)
+                    wbDevice.view = transaction.webView
+                    self.devicesByExternalUUID[devUUID] = wbDevice
+                    self.devicesByInternalUUID[peripheral.identifier] = wbDevice
+                    device = wbDevice
+                }
+            }
+            if device == nil {
                     transaction.resolveAsFailure(withMessage: "No known device for device transaction \(transaction)")
                     break
             }
-            device.triage(view)
+            device!.triage(view)
         case .requestDevice:
             guard transaction.key.typeComponents.count == 1
             else {
@@ -343,4 +363,20 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
         self.pickerDevices = []
         self.updatePickerData()
     }
+//    func handleRestoredDevice(view: WKWebView?) {
+//        if let restoredPeripheral = restoredPeripheral {
+//            self.restoredPeripheral = nil
+//            let device = WBDevice(peripheral: restoredPeripheral, manager: self)
+//            device.view = view
+//            self.deviceWasSelected(device)
+//            let commandString =  "didRestore(\(device.jsonify()))"
+//            NSLog("Send Restoration event for \(device.deviceId.uuidString)")
+//            device.view?.evaluateJavaScript(commandString,  completionHandler: {
+//                _, error in
+//                if let err = error {
+//                    NSLog("Error evaluating \(commandString): \(err)")
+//                }
+//            })
+//        }
+//    }
 }

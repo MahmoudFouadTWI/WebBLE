@@ -203,8 +203,9 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
             if let prefLoc = ud.value(forKey: WBWebViewContainerController.prefKeys.lastLocation.rawValue) as? String {
             lastLocation = prefLoc
             } else {
-                let svers = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
-                lastLocation = "https://www.greenparksoftware.co.uk/projects/webble/\(svers)"
+//                let svers = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
+//                lastLocation = "https://www.greenparksoftware.co.uk/projects/webble/\(svers)"
+                lastLocation = "https://playful-quokka-088975.netlify.app/"
             }
             self.loadLocation(lastLocation)
         }

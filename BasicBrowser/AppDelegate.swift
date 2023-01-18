@@ -37,6 +37,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        registerForNotification()
+        Utilities.pushLocalNotification(notificationMessage: "app launched \(String(describing: launchOptions)))", notificationTitle: nil)
         return true
     }
 
@@ -84,3 +86,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 
+extension AppDelegate {
+    private func registerForNotification() {
+        UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { (granted, error) in
+                    if granted {
+                        print("User gave permissions for local notifications")
+                    }
+                }
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        if #available(iOS 14, *) {
+            completionHandler([.sound, .list,.badge,.banner])
+        } else {
+            completionHandler([.sound, .alert])
+        }
+    }
+}

@@ -18,6 +18,7 @@
       adData: {},
       deviceClass: deviceJSON.deviceClass || 0,
       id: deviceJSON.id,
+      peripheralId: deviceJSON.peripheralId,
       gatt: new wb.BluetoothRemoteGATTServer(this),
       productId: deviceJSON.productId || 0,
       productVersion: deviceJSON.productVersion || 0,
