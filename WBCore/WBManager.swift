@@ -34,7 +34,7 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
     }
 
     // MARK: - Properties
-   // var restoredPeripheral: CBPeripheral!
+
     let debug = true
     var centralManager = CBCentralManager(delegate: nil, queue: nil)
     var devicePicker: WBPicker
@@ -129,8 +129,9 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
                 return
         }
         device.didDisconnect(error: error)
-      //  self.devicesByInternalUUID[peripheral.identifier] = nil
-      //  self.devicesByExternalUUID[device.deviceId] = nil
+        self.devicesByInternalUUID[peripheral.identifier] = nil
+        self.devicesByExternalUUID[device.deviceId] = nil
+        
     }
     
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -138,9 +139,7 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
     }
     
     public func centralManager(_ central: CBCentralManager, willRestoreState dict: [String : Any]) {
-//        if let peripherals = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral], peripherals.count > 0, let peripheral = peripherals.first {
-//                restoredPeripheral = peripheral
-//        }
+        
     }
 
     // MARK: - UIPickerViewDelegate
@@ -363,20 +362,4 @@ open class WBManager: NSObject, CBCentralManagerDelegate, WKScriptMessageHandler
         self.pickerDevices = []
         self.updatePickerData()
     }
-//    func handleRestoredDevice(view: WKWebView?) {
-//        if let restoredPeripheral = restoredPeripheral {
-//            self.restoredPeripheral = nil
-//            let device = WBDevice(peripheral: restoredPeripheral, manager: self)
-//            device.view = view
-//            self.deviceWasSelected(device)
-//            let commandString =  "didRestore(\(device.jsonify()))"
-//            NSLog("Send Restoration event for \(device.deviceId.uuidString)")
-//            device.view?.evaluateJavaScript(commandString,  completionHandler: {
-//                _, error in
-//                if let err = error {
-//                    NSLog("Error evaluating \(commandString): \(err)")
-//                }
-//            })
-//        }
-//    }
 }
