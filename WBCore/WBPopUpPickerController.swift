@@ -24,8 +24,8 @@ class WBPopUpPickerController: UIViewController {
     // MARK: - UIViewController overrides
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.pickerView.dataSource = self.wbManager
-        self.pickerView.delegate = self.wbManager
+       // self.pickerView.dataSource = self.wbManager
+        //self.pickerView.delegate = self.wbManager
         self.pickerView.reloadAllComponents()
     }
 

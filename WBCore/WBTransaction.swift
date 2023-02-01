@@ -174,6 +174,9 @@ class WBTransaction: Equatable, CustomStringConvertible {
     func resolveAsSuccess(withObject object: Jsonifiable) {
         self.complete(success: true, object: object)
     }
+    func resolveAsSuccess(withObjects objects: [Jsonifiable]) {
+        self.complete(success: true, objects: objects)
+    }
     func resolveAsFailure(withMessage message: String) {
         self.complete(success: false, object: message)
     }
@@ -199,6 +202,29 @@ class WBTransaction: Equatable, CustomStringConvertible {
         }
 
         let commandString = "window.receiveMessageResponse(\(success ? "true" : "false"), \(object.jsonify()), \(self.id));\n"
+        NSLog("\(self.description) was \(success ? "successful" : "unsuccessful")")
+
+        if let wv = self.webView {
+            wv.evaluateJavaScript(commandString, completionHandler: {
+                _, error in
+                if let err = error {
+                    NSLog("Error evaluating javascript: \(err)")
+                }})
+        }
+        else {
+            NSLog("ERROR: Webview not configured on transaction or dealloced")
+        }
+        self.resolved = true
+        self.completionHandlers.forEach {$0(self, success)}
+        self.completionHandlers.removeAll()
+    }
+
+    private func complete(success: Bool, objects: [Jsonifiable]) {
+        if self.resolved {
+            NSLog("Attempt to re-resolve transaction \(self.id) ignored")
+            return
+        }
+        let commandString = "window.receiveMessageResponse(\(success ? "true" : "false"), \(objects.map { $0.jsonify()}), \(self.id));\n"
         NSLog("\(self.description) was \(success ? "successful" : "unsuccessful")")
 
         if let wv = self.webView {
