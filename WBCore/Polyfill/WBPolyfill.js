@@ -80,8 +80,6 @@
     }
     let validatedDeviceOptions = {};
     validatedDeviceOptions.filters = filters;
-    // scan time-out
-    validatedDeviceOptions.timeout = requestDeviceOptions.timeout;
 
     // Optional services not yet suppoprted.
     // let optionalServices = requestDeviceOptions.optionalServices;
@@ -92,13 +90,8 @@
     return native.sendMessage(
       'requestDevice',
       {data: validatedDeviceOptions}
-    ).then(function (devices) {
-      let wbDevices = [];
-      for (let i =0; i< devices.length; i++) {
-         let device = JSON.parse(devices[i]);
-         wbDevices.push(new wb.BluetoothDevice(device));
-      }
-      return wbDevices;
+    ).then(function (device) {
+      return new wb.BluetoothDevice(device);
     });
   };
 

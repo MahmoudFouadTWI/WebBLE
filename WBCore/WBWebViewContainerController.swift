@@ -12,7 +12,12 @@ protocol ConsoleToggler {
     func toggleConsole()
 }
 
-class WBWebViewContainerController: UIViewController, WKNavigationDelegate, WKUIDelegate {
+protocol WBPicker {
+    func showPicker()
+    func updatePicker()
+}
+
+class WBWebViewContainerController: UIViewController, WKNavigationDelegate, WKUIDelegate, WBPicker {
     
     enum prefKeys: String {
         case lastLocation
@@ -133,12 +138,12 @@ class WBWebViewContainerController: UIViewController, WKNavigationDelegate, WKUI
             self.popUpPickerController = nil
             switch sender.identifier {
             case "Cancel":
-              //  self.wbManager?.cancelDeviceSearch()
+                self.wbManager?.cancelDeviceSearch()
                 break
             case "Done":
-//                self.wbManager?.selectDeviceAt(
-//                    puvc.pickerView.selectedRow
-//                )
+                self.wbManager?.selectDeviceAt(
+                    puvc.pickerView.selectedRow
+                )
                 break
             default:
                 NSLog("Unknown unwind segue ignored: \(sender.identifier ?? "<none>")")
@@ -176,7 +181,7 @@ class WBWebViewContainerController: UIViewController, WKNavigationDelegate, WKUI
     private func _configureNewManager() {
         self.wbManager?.clearState()
         if wbManager == nil {
-            self.wbManager = WBManager()
+            self.wbManager = WBManager(devicePicker: self)
         }
         self.webView.wbManager = self.wbManager
     }

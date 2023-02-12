@@ -45,11 +45,12 @@ open class WBManager: NSObject {
     /*! @abstract Filters in use on the current device request transaction.  If nil, that means we are accepting all devices.
      */
     private var filters: [[String: AnyObject]]? = nil
-    private var foundedDevices = [WBDevice]()
-    private var scanTimer: Timer?
+    private var pickerDevices = [WBDevice]()
+    private var devicePicker: WBPicker
 
     // MARK: - Constructors / destructors
-    override init() {
+    init(devicePicker: WBPicker) {
+        self.devicePicker = devicePicker
         super.init()
         self.centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionRestoreIdentifierKey: "my-central"])
     }
@@ -66,7 +67,7 @@ open class WBManager: NSObject {
             }
             devMap.removeAll()
         }
-        self.foundedDevices = []
+        self._clearPickerView()
     }
 }
 
@@ -96,7 +97,7 @@ extension WBManager: CBCentralManagerDelegate {
             return
         }
 
-        guard self.foundedDevices.first(where: {$0.peripheral == peripheral}) == nil else {
+        guard self.pickerDevices.first(where: {$0.peripheral == peripheral}) == nil else {
             return
         }
 
@@ -104,8 +105,9 @@ extension WBManager: CBCentralManagerDelegate {
         let device = WBDevice(
             peripheral: peripheral, advertisementData: advertisementData,
             RSSI: RSSI, manager: self)
-        if !self.foundedDevices.contains(where: {$0 == device}) {
-            self.didFoundDevice(device)
+        if !self.pickerDevices.contains(where: {$0 == device}) {
+            self.pickerDevices.append(device)
+            self.updatePickerData()
         }
     }
     
@@ -210,7 +212,6 @@ private extension WBManager {
 
             let filters = transaction.messageData["filters"] as? [[String: AnyObject]]
             
-            let timeout = transaction.messageData["timeout"] as? Int ?? 0
 
             // PROTECT force unwrap see below
             guard acceptAllDevices || filters != nil
@@ -239,43 +240,44 @@ private extension WBManager {
             } else {
                 // force unwrap, but protected by guard above marked PROTECT
                 self.scanForPeripherals(with: filters!)
-                self.setupScanTimer(timeout: timeout)
             }
             transaction.addCompletionHandler {_, _ in
                 self.stopScanForPeripherals()
                 self.requestDeviceTransaction = nil
             }
+            self.devicePicker.showPicker()
         }
     }
     private func scanForAllPeripherals() {
-        self.foundedDevices = []
+        self._clearPickerView()
         self.filters = nil
         centralManager.scanForPeripherals(withServices: nil, options: nil)
     }
 
     private func scanForPeripherals(with filters:[[String: AnyObject]]) {
-            let services = filters.reduce([String](), {
-                (currReduction, nextValue) in
-                if let nextServices = nextValue["services"] as? [String] {
-                    return currReduction + nextServices
-                }
-                return currReduction
-            })
-            
-            let servicesCBUUID = self._convertServicesListToCBUUID(services)
-            
-            if (self.debug) {
-                NSLog("Scanning for peripherals... (services: \(servicesCBUUID))")
+        let services = filters.reduce([String](), {
+            (currReduction, nextValue) in
+            if let nextServices = nextValue["services"] as? [String] {
+                return currReduction + nextServices
             }
-            self.foundedDevices = []
-            self.filters = filters
-            centralManager.scanForPeripherals(withServices: servicesCBUUID, options: nil)
+            return currReduction
+        })
+        
+        let servicesCBUUID = self._convertServicesListToCBUUID(services)
+        
+        if (self.debug) {
+            NSLog("Scanning for peripherals... (services: \(servicesCBUUID))")
+        }
+        
+        self._clearPickerView();
+        self.filters = filters
+        centralManager.scanForPeripherals(withServices: servicesCBUUID, options: nil)
     }
     private func stopScanForPeripherals() {
         if self.centralManager.state == .poweredOn {
             self.centralManager.stopScan()
         }
-        self.foundedDevices = []
+        self._clearPickerView()
     }
 
     private func _convertServicesListToCBUUID(_ services: [String]) -> [CBUUID] {
@@ -309,25 +311,86 @@ private extension WBManager {
         }
         return false
     }
+}
 
-    private func didFoundDevice(_ device: WBDevice) {
-        device.view = requestDeviceTransaction?.webView
-        foundedDevices.append(device)
-        devicesByExternalUUID[device.deviceId] = device;
-        devicesByInternalUUID[device.internalUUID] = device;
+
+extension WBManager {
+    
+    // MARK: - Public API
+    public func selectDeviceAt(_ index: Int) {
+        let device = self.pickerDevices[index]
+        device.view = self.requestDeviceTransaction?.webView
+        self.requestDeviceTransaction?.resolveAsSuccess(withObject: device)
+        self.deviceWasSelected(device)
     }
     
-    private func setupScanTimer(timeout: Int) {
-        guard timeout > 0 else {return}
-        scanTimer = Timer.scheduledTimer(timeInterval: TimeInterval(timeout), target: self , selector: #selector(self.timerIsFired), userInfo: nil, repeats: false)
+    public func cancelDeviceSearch() {
+        NSLog("User cancelled device selection")
+        self.requestDeviceTransaction?.resolveAsFailure(withMessage: "User cancelled")
+        self.stopScanForPeripherals()
+        self._clearPickerView()
     }
-    @objc private func timerIsFired(){
-        clearScanTimer()
-        self.requestDeviceTransaction?.resolveAsSuccess(withObjects: foundedDevices)
-        self.foundedDevices = []
+    
+    private func deviceWasSelected(_ device: WBDevice) {
+        // TODO: think about whether overwriting any existing device is an issue.
+        self.devicesByExternalUUID[device.deviceId] = device;
+        self.devicesByInternalUUID[device.internalUUID] = device;
     }
-    private func clearScanTimer() {
-        scanTimer?.invalidate()
-        scanTimer = nil
+    
+    private func _clearPickerView() {
+        self.pickerDevices = []
+        self.updatePickerData()
     }
+    
+    
+    private func updatePickerData(){
+        self.pickerDevices.sort(by: {
+            if $0.name != nil && $1.name == nil {
+                // $1 is "bigger" in that its name is nil
+                return true
+            }
+            // cannot be sorting ids that we haven't discovered
+            if $0.name == $1.name {
+                return $0.internalUUID.uuidString < $1.internalUUID.uuidString
+            }
+            if $0.name == nil {
+                // $0 is "bigger" as it's nil and the other isn't
+                return false
+            }
+            // forced unwrap protected by logic above
+            return $0.name! < $1.name!
+        })
+        self.devicePicker.updatePicker()
+    }
+}
+
+ 
+// MARK: - UIPickerViewDelegate
+extension WBManager: WBPopUpPickerViewDelegate {
+    public func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        // dummy response for making screen shots from the simulator
+        // return row == 0 ? "Puck.js 69c5 (82DF60A5-3C0B..." : "Puck.js c728 (9AB342DA-4C27..."
+        return self._pv(pickerView, titleForRow: row, forComponent: component)
+    }
+    public func numberOfComponents(in pickerView: UIPickerView) -> Int {
+        return 1
+    }
+    
+    public func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+        // dummy response for making screen shots from the simulator
+        // return 2
+        return self.pickerDevices.count
+    }
+    
+    private func _pv(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String {
+
+        let dev = self.pickerDevices[row]
+        let id = dev.internalUUID
+        guard let name = dev.name
+        else {
+            return "(\(id))"
+        }
+        return "\(name) (\(id))"
+    }
+
 }
