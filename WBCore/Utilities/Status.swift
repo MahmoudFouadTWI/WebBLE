@@ -8,10 +8,10 @@
 import Foundation
 
 
-enum Stauts: String {
-    case StatusSuccess
+enum Status: String {
     case StatusBluetoothOn
     case StatusBluetoothOff
     case StatusBluetoothUnauthorized
     case StatusAlreadyScanning
+    case StatusNoDevices
 }

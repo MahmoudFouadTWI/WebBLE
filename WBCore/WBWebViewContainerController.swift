@@ -138,12 +138,12 @@ class WBWebViewContainerController: UIViewController, WKNavigationDelegate, WKUI
             self.popUpPickerController = nil
             switch sender.identifier {
             case "Cancel":
-                self.wbManager?.cancelDeviceSearch()
+               // self.wbManager?.cancelDeviceSearch()
                 break
             case "Done":
-                self.wbManager?.selectDeviceAt(
-                    puvc.pickerView.selectedRow
-                )
+              //  self.wbManager?.selectDeviceAt(
+              //      puvc.pickerView.selectedRow
+              //  )
                 break
             default:
                 NSLog("Unknown unwind segue ignored: \(sender.identifier ?? "<none>")")
@@ -181,7 +181,7 @@ class WBWebViewContainerController: UIViewController, WKNavigationDelegate, WKUI
     private func _configureNewManager() {
         self.wbManager?.clearState()
         if wbManager == nil {
-            self.wbManager = WBManager(devicePicker: self)
+            self.wbManager = WBManager()
         }
         self.webView.wbManager = self.wbManager
     }

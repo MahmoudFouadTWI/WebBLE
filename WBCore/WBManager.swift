@@ -45,12 +45,11 @@ open class WBManager: NSObject {
     /*! @abstract Filters in use on the current device request transaction.  If nil, that means we are accepting all devices.
      */
     private var filters: [[String: AnyObject]]? = nil
-    private var pickerDevices = [WBDevice]()
-    private var devicePicker: WBPicker
+    private var foundedDevices = [WBDevice]()
+    private var scanTimer: Timer?
 
     // MARK: - Constructors / destructors
-    init(devicePicker: WBPicker) {
-        self.devicePicker = devicePicker
+    override init() {
         super.init()
         self.centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionRestoreIdentifierKey: "my-central"])
     }
@@ -67,7 +66,7 @@ open class WBManager: NSObject {
             }
             devMap.removeAll()
         }
-        self._clearPickerView()
+        self._clearFoundedDevices()
     }
 }
 
@@ -97,7 +96,7 @@ extension WBManager: CBCentralManagerDelegate {
             return
         }
 
-        guard self.pickerDevices.first(where: {$0.peripheral == peripheral}) == nil else {
+        guard self.foundedDevices.first(where: {$0.peripheral == peripheral}) == nil else {
             return
         }
 
@@ -105,9 +104,8 @@ extension WBManager: CBCentralManagerDelegate {
         let device = WBDevice(
             peripheral: peripheral, advertisementData: advertisementData,
             RSSI: RSSI, manager: self)
-        if !self.pickerDevices.contains(where: {$0 == device}) {
-            self.pickerDevices.append(device)
-            self.updatePickerData()
+        if !self.foundedDevices.contains(where: {$0 == device}) {
+            self.didFoundDevice(device)
         }
     }
     
@@ -144,24 +142,6 @@ extension WBManager: CBCentralManagerDelegate {
 
 private extension WBManager {
 
-    private var canStartScan: Stauts {
-        var state: Stauts = .StatusSuccess
-        if self.centralManager.isScanning {
-            state = .StatusAlreadyScanning
-        }
-        if self.centralManager.state != .poweredOn {
-            if self.centralManager.state == .unauthorized {
-                state = .StatusBluetoothUnauthorized
-            } else {
-                state = .StatusBluetoothOff
-            }
-        } else {
-            state = .StatusBluetoothOn
-        }
-        return state
-    }
-    
-    
     private func triage(transaction: WBTransaction){
 
         guard
@@ -181,7 +161,10 @@ private extension WBManager {
                 transaction.resolveAsFailure(withMessage: "Bad device request")
                 break
             }
-
+            guard self.centralManager.state == .poweredOn else {
+                transaction.resolveAsFailure(withMessage: centralManager.state == .poweredOff ? Status.StatusBluetoothOff.rawValue : Status.StatusBluetoothUnauthorized.rawValue)
+                return
+            }
             let devUUID = view.externalDeviceUUID
             // get device from external Dictionary in case connect after scan.
             var device = self.devicesByExternalUUID[devUUID]
@@ -211,7 +194,7 @@ private extension WBManager {
             let acceptAllDevices = transaction.messageData["acceptAllDevices"] as? Bool ?? false
 
             let filters = transaction.messageData["filters"] as? [[String: AnyObject]]
-            
+            let timeout = transaction.messageData["timeout"] as? Int ?? 10
 
             // PROTECT force unwrap see below
             guard acceptAllDevices || filters != nil
@@ -241,15 +224,15 @@ private extension WBManager {
                 // force unwrap, but protected by guard above marked PROTECT
                 self.scanForPeripherals(with: filters!)
             }
+            self.setupScanTimer(timeout: timeout)
             transaction.addCompletionHandler {_, _ in
                 self.stopScanForPeripherals()
                 self.requestDeviceTransaction = nil
             }
-            self.devicePicker.showPicker()
         }
     }
     private func scanForAllPeripherals() {
-        self._clearPickerView()
+        self._clearFoundedDevices()
         self.filters = nil
         centralManager.scanForPeripherals(withServices: nil, options: nil)
     }
@@ -269,7 +252,7 @@ private extension WBManager {
             NSLog("Scanning for peripherals... (services: \(servicesCBUUID))")
         }
         
-        self._clearPickerView();
+        self._clearFoundedDevices();
         self.filters = filters
         centralManager.scanForPeripherals(withServices: servicesCBUUID, options: nil)
     }
@@ -277,7 +260,7 @@ private extension WBManager {
         if self.centralManager.state == .poweredOn {
             self.centralManager.stopScan()
         }
-        self._clearPickerView()
+        self._clearFoundedDevices()
     }
 
     private func _convertServicesListToCBUUID(_ services: [String]) -> [CBUUID] {
@@ -316,81 +299,68 @@ private extension WBManager {
 
 extension WBManager {
     
-    // MARK: - Public API
-    public func selectDeviceAt(_ index: Int) {
-        let device = self.pickerDevices[index]
-        device.view = self.requestDeviceTransaction?.webView
-        self.requestDeviceTransaction?.resolveAsSuccess(withObject: device)
-        self.deviceWasSelected(device)
-    }
-    
-    public func cancelDeviceSearch() {
-        NSLog("User cancelled device selection")
-        self.requestDeviceTransaction?.resolveAsFailure(withMessage: "User cancelled")
-        self.stopScanForPeripherals()
-        self._clearPickerView()
-    }
-    
     private func deviceWasSelected(_ device: WBDevice) {
-        // TODO: think about whether overwriting any existing device is an issue.
         self.devicesByExternalUUID[device.deviceId] = device;
         self.devicesByInternalUUID[device.internalUUID] = device;
     }
     
-    private func _clearPickerView() {
-        self.pickerDevices = []
-        self.updatePickerData()
+    private func _clearFoundedDevices() {
+        self.foundedDevices = []
+    }
+    private func didFoundDevice(_ device: WBDevice) {
+        device.view = requestDeviceTransaction?.webView
+        foundedDevices.append(device)
     }
     
-    
-    private func updatePickerData(){
-        self.pickerDevices.sort(by: {
-            if $0.name != nil && $1.name == nil {
-                // $1 is "bigger" in that its name is nil
-                return true
-            }
-            // cannot be sorting ids that we haven't discovered
-            if $0.name == $1.name {
-                return $0.internalUUID.uuidString < $1.internalUUID.uuidString
-            }
-            if $0.name == nil {
-                // $0 is "bigger" as it's nil and the other isn't
-                return false
-            }
-            // forced unwrap protected by logic above
-            return $0.name! < $1.name!
-        })
-        self.devicePicker.updatePicker()
-    }
-}
-
- 
-// MARK: - UIPickerViewDelegate
-extension WBManager: WBPopUpPickerViewDelegate {
-    public func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-        // dummy response for making screen shots from the simulator
-        // return row == 0 ? "Puck.js 69c5 (82DF60A5-3C0B..." : "Puck.js c728 (9AB342DA-4C27..."
-        return self._pv(pickerView, titleForRow: row, forComponent: component)
-    }
-    public func numberOfComponents(in pickerView: UIPickerView) -> Int {
-        return 1
-    }
-    
-    public func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        // dummy response for making screen shots from the simulator
-        // return 2
-        return self.pickerDevices.count
-    }
-    
-    private func _pv(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String {
-
-        let dev = self.pickerDevices[row]
-        let id = dev.internalUUID
-        guard let name = dev.name
-        else {
-            return "(\(id))"
+    private var canStartScan: Status {
+        var state: Status = .StatusBluetoothOn
+        if self.centralManager.isScanning {
+            state = .StatusAlreadyScanning
         }
-        return "\(name) (\(id))"
+        if self.centralManager.state != .poweredOn {
+            if self.centralManager.state == .unauthorized {
+                state = .StatusBluetoothUnauthorized
+            } else {
+                state = .StatusBluetoothOff
+            }
+        } else {
+            state = .StatusBluetoothOn
+        }
+        return state
     }
-
+    
+    private func setupScanTimer(timeout: Int) {
+        guard timeout > 0 else {return}
+        scanTimer = Timer.scheduledTimer(timeInterval: TimeInterval(timeout), target: self , selector: #selector(self.timerIsFired), userInfo: nil, repeats: false)
+    }
+    
+    @objc private func timerIsFired(){
+        clearScanTimer()
+        handleFoundedDevices()
+    }
+    
+    private func clearScanTimer() {
+        scanTimer?.invalidate()
+        scanTimer = nil
+    }
+    
+    private func handleFoundedDevices() {
+        guard let device = sortDevices().first else {
+            self.requestDeviceTransaction?.resolveAsFailure(withMessage: Status.StatusNoDevices.rawValue)
+            return
+        }
+        deviceWasSelected(device)
+        requestDeviceTransaction?.resolveAsSuccess(withObject: device)
+    }
+    
+    
+    private func sortDevices() -> [WBDevice] {
+        var sortedDevices = foundedDevices
+        if (foundedDevices.count > 1){
+            sortedDevices = foundedDevices.sorted {
+                return (Int($0.adData.rssi) ?? 0) > (Int($1.adData.rssi) ?? 0)
+            }
+        }
+        return sortedDevices
+    }
 }

@@ -80,6 +80,8 @@
     }
     let validatedDeviceOptions = {};
     validatedDeviceOptions.filters = filters;
+    // scan time-out
+    validatedDeviceOptions.timeout = requestDeviceOptions.timeout;
 
     // Optional services not yet suppoprted.
     // let optionalServices = requestDeviceOptions.optionalServices;
