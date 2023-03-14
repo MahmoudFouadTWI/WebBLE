@@ -229,7 +229,6 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
         self.readCharacteristicTM.abandonAll()
     }
     func didConnect() {
-        self.sendConnectEvent()
         self.connectTransactions.forEach{$0.resolveAsSuccess()}
     }
     func didFailToConnect() {
@@ -241,6 +240,9 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
         NSLog("\(self) did disconnect \(error?.localizedDescription ?? "<no error>")")
         defer {
             self.sendDisconnectEvent()
+            if error == nil {
+                DevicesHandler.shared.adjustSavedDevices(device: self, adjustCase: .remove)
+            }
         }
 
         let failTrans: (WBTransaction) -> Void = {
@@ -413,6 +415,8 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
             NSLog("Starting notifications for characteristic \(view.characteristicUUID.uuidString) on device \(self.peripheral.name ?? "<no-name>")")
 
             self.peripheral.setNotifyValue(true, for: char)
+            self.sendConnectEvent()
+            DevicesHandler.shared.adjustSavedDevices(device: self, adjustCase: .add)
             transaction.resolveAsSuccess()
 
         case .stopNotifications:
@@ -645,10 +649,7 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
         self.evaluateJavaScript(commandString)
     }
     private func sendConnectEvent() {
-        let commandString =  "didConnect(\(self.jsonify()))"
-        NSLog("Send did connect event for \(self.deviceId.uuidString)")
         Utilities.pushLocalNotification(notificationMessage: "\(self.name ?? self.deviceId.uuidString) connected", notificationTitle: "Connection")
-        self.evaluateJavaScript(commandString)
     }
 
     private func writeCharacteristicValue(_ char: CBCharacteristic, _ view: WriteCharacteristicView) {

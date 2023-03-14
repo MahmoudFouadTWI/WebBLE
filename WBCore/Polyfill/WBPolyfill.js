@@ -53,6 +53,20 @@
 
   nslog('Create bluetooth');
   let bluetooth = {};
+  
+  bluetooth.getDevices = function () {
+      return native.sendMessage(
+        'getDevices', {data: {}}
+      ).then(function (devices) {
+        let bluetoothDevices = []
+        for(let i = 0; i < devices.length; i++) {
+          let bleDevice = new wb.BluetoothDevice(JSON.parse(devices[i]));
+          bluetoothDevices.push(bleDevice);
+        }
+        return bluetoothDevices;
+      });
+  };
+ 
   bluetooth.requestDevice = function (requestDeviceOptions) {
     if (!requestDeviceOptions) {
       return Promise.reject(new TypeError('requestDeviceOptions not provided'));
@@ -179,7 +193,8 @@
       let devs = native.devicesBeingNotified[did];
       devs.forEach(function (dev) {
         if (dev === device) {
-          throw new Error('Device already registered for notifications');
+          //throw new Error('Device already registered for notifications');
+          native.unregisterDeviceForNotifications(device);
         }
       });
       nslog(`Register device ${did} for notifications`);
@@ -205,7 +220,7 @@
       if (devices !== undefined) {
         devices.forEach(function (device) {
           device.handleSpontaneousDisconnectEvent();
-          native.unregisterDeviceForNotifications(device);
+          //native.unregisterDeviceForNotifications(device);
         });
       }
       native.characteristicsBeingNotified[deviceId] = undefined;

@@ -55,6 +55,7 @@
 		E44C18631A36203E00734F8B /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E44C18621A36203E00734F8B /* Images.xcassets */; };
 		E44C18661A36203E00734F8B /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = E44C18641A36203E00734F8B /* LaunchScreen.xib */; };
 		E44C18721A36203E00734F8B /* BleBrowserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44C18711A36203E00734F8B /* BleBrowserTests.swift */; };
+		F15EEF9029ACEA7E00FFFFA0 /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = F15EEF8F29ACEA7E00FFFFA0 /* Cache.swift */; };
 		F1C1D0C0298A6B2F002A39D1 /* Status.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C1D0BF298A6B2F002A39D1 /* Status.swift */; };
 		F1CCA59C295D9CBF0095CEDB /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CCA59B295D9CBF0095CEDB /* Utilities.swift */; };
 /* End PBXBuildFile section */
@@ -126,6 +127,7 @@
 		E44C186B1A36203E00734F8B /* WebBLETests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WebBLETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E44C18701A36203E00734F8B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E44C18711A36203E00734F8B /* BleBrowserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleBrowserTests.swift; sourceTree = "<group>"; };
+		F15EEF8F29ACEA7E00FFFFA0 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		F1C1D0BF298A6B2F002A39D1 /* Status.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Status.swift; sourceTree = "<group>"; };
 		F1CCA59B295D9CBF0095CEDB /* Utilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -282,6 +284,7 @@
 			children = (
 				F1CCA59B295D9CBF0095CEDB /* Utilities.swift */,
 				F1C1D0BF298A6B2F002A39D1 /* Status.swift */,
+				F15EEF8F29ACEA7E00FFFFA0 /* Cache.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -422,6 +425,7 @@
 				5AD6DACB2323EBFE0005F733 /* WBWebViewController.swift in Sources */,
 				E44C185C1A36203E00734F8B /* AppDelegate.swift in Sources */,
 				F1CCA59C295D9CBF0095CEDB /* Utilities.swift in Sources */,
+				F15EEF9029ACEA7E00FFFFA0 /* Cache.swift in Sources */,
 				5A5D621621EBA83D00E417DC /* NavigationViewController.swift in Sources */,
 				5A10929B2168D599002CC973 /* ConsoleViewContainerController.swift in Sources */,
 				5A95DDF81E0C080C00DFE26B /* WBWebView.swift in Sources */,

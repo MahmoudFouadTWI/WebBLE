@@ -48,9 +48,9 @@
       // https://webbluetoothcg.github.io/web-bluetooth/#disconnection-events
       // 1. not implemented
       // 2.
-      if (!this.gatt.connected) {
-        return;
-      }
+//      if (!this.gatt.connected) {
+//        return;
+//      }
       // 3.1
       this.gatt.connected = false;
       // 3.2-3.7 not implemented

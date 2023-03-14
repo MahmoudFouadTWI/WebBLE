@@ -179,7 +179,7 @@ class WBWebViewContainerController: UIViewController, WKNavigationDelegate, WKUI
     
     // MARK: - Private
     private func _configureNewManager() {
-        self.wbManager?.clearState()
+       // self.wbManager?.clearState()
         if wbManager == nil {
             self.wbManager = WBManager()
         }

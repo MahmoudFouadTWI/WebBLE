@@ -24,7 +24,7 @@ open class WBManager: NSObject {
 
     // MARK: - Embedded types
     enum ManagerRequests: String {
-        case device, requestDevice
+        case device, requestDevice, getDevices
     }
 
     // MARK: - Properties
@@ -41,6 +41,7 @@ open class WBManager: NSObject {
     /*! @abstract The outstanding request for a device from the web page, if one is outstanding. Ony one may be outstanding at any one time and should be policed by a modal dialog box. TODO: how modal is the current solution?
      */
     private var requestDeviceTransaction: WBTransaction? = nil
+    private var getDevicesTransaction: WBTransaction? = nil
 
     /*! @abstract Filters in use on the current device request transaction.  If nil, that means we are accepting all devices.
      */
@@ -87,6 +88,10 @@ extension WBManager: CBCentralManagerDelegate {
     
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         NSLog("Bluetooth is \(central.state == CBManagerState.poweredOn ? "ON" : "OFF")")
+        print("devices = \(self.devicesByInternalUUID.values.count)")
+        for device in self.devicesByInternalUUID.values {
+            device.didDisconnect(error: nil)
+        }
     }
     
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
@@ -169,7 +174,7 @@ private extension WBManager {
             // get device from external Dictionary in case connect after scan.
             var device = self.devicesByExternalUUID[devUUID]
             if device == nil {
-                //get device in reconnection case.
+                //get device in reconnection cases.
                 if let uuidstr = transaction.messageData["peripheralId"] as? String,
                    let uuid = UUID(uuidString: uuidstr),
                    let peripheral = self.centralManager.retrievePeripherals(withIdentifiers: [uuid]).first {
@@ -228,6 +233,28 @@ private extension WBManager {
             transaction.addCompletionHandler {_, _ in
                 self.stopScanForPeripherals()
                 self.requestDeviceTransaction = nil
+            }
+            
+        case .getDevices:
+            guard transaction.key.typeComponents.count == 1
+            else {
+                transaction.resolveAsFailure(withMessage: "Invalid request type \(transaction.key)")
+                break
+            }
+            guard self.requestDeviceTransaction == nil
+            else {
+                transaction.resolveAsFailure(withMessage: "Previous get devices request is still in progress")
+                break
+            }
+            
+            self.getDevicesTransaction = transaction
+            var devices = [String]()
+            for value in Cache.shared.get(forKey: CacheConstants.devicesKey).values {
+                devices.append(value)
+            }
+            self.getDevicesTransaction?.resolveAsSuccess(withObjects: devices)
+            transaction.addCompletionHandler {_, _ in
+                self.getDevicesTransaction = nil
             }
         }
     }
@@ -323,8 +350,6 @@ extension WBManager {
             } else {
                 state = .StatusBluetoothOff
             }
-        } else {
-            state = .StatusBluetoothOn
         }
         return state
     }
