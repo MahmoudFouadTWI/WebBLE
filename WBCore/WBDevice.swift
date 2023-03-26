@@ -241,7 +241,7 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
         defer {
             self.sendDisconnectEvent()
             if error == nil {
-                DevicesHandler.shared.adjustSavedDevices(device: self, adjustCase: .remove)
+                CachingHandler.shared.removeDevice(device: self)
             }
         }
 
@@ -416,7 +416,7 @@ open class WBDevice: NSObject, Jsonifiable, CBPeripheralDelegate {
 
             self.peripheral.setNotifyValue(true, for: char)
             self.sendConnectEvent()
-            DevicesHandler.shared.adjustSavedDevices(device: self, adjustCase: .add)
+            CachingHandler.shared.addDevice(device: self)
             transaction.resolveAsSuccess()
 
         case .stopNotifications:

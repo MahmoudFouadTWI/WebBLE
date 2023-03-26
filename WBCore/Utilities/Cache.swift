@@ -13,7 +13,7 @@ class Cache {
     private let defaults = UserDefaults.standard
     private init () {}
     
-    func add(value: [String: String], key: String) {
+    func set(value: [String: String], key: String) {
         defaults.set(value, forKey: key)
     }
     func get(forKey key: String) -> [String: String] {
@@ -21,25 +21,23 @@ class Cache {
     }
 }
 
-class CacheConstants {
-    static let devicesKey = "devices"
+struct CacheConstants {
+    static let devicesKey = "devicesKey"
 }
 
-class DevicesHandler {
-    static let shared = DevicesHandler()
+class CachingHandler {
+    static let shared = CachingHandler()
     private init () {}
     
-    func adjustSavedDevices(device: WBDevice, adjustCase: AdjustCase) {
+    func addDevice(device: WBDevice) {
         var savedDevices = Cache.shared.get(forKey: CacheConstants.devicesKey)
-        if adjustCase == .add {
-            savedDevices[device.deviceId.uuidString] = device.jsonify()
-        } else {
-            savedDevices[device.deviceId.uuidString] = nil
-        }
-        Cache.shared.add(value: savedDevices, key: CacheConstants.devicesKey)
+        savedDevices[device.deviceId.uuidString] = device.jsonify()
+        Cache.shared.set(value: savedDevices, key: CacheConstants.devicesKey)
     }
-}
-
-enum AdjustCase {
-    case add , remove
+    
+    func removeDevice(device: WBDevice) {
+        var savedDevices = Cache.shared.get(forKey: CacheConstants.devicesKey)
+        savedDevices[device.deviceId.uuidString] = nil
+        Cache.shared.set(value: savedDevices, key: CacheConstants.devicesKey)
+    }
 }
