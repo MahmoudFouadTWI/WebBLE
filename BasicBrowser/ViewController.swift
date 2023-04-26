@@ -205,7 +205,7 @@ class ViewController: UIViewController, UITextFieldDelegate, WKNavigationDelegat
             } else {
 //                let svers = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
 //                lastLocation = "https://www.greenparksoftware.co.uk/projects/webble/\(svers)"
-                lastLocation = "https://playful-quokka-088975.netlify.app/"
+                lastLocation = "https://glaswebbleapp.twi-cloud-services.com/#/ble"
             }
             self.loadLocation(lastLocation)
         }
